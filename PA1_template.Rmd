@@ -1,25 +1,157 @@
 ---
 title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+author: "Deborah Passey"
+date: "6/15/2019"
+output: html_document
 ---
 
+# Assignment 1 - RMarkdown File  
 
-## Loading and preprocessing the data
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
 
+## Loading and preprocessing the data  
 
+  ### Loading Data  
 
-## What is mean total number of steps taken per day?
+```{r Data}
+        library("data.table")
+        path <- getwd()
+        download.file(url = "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip", destfile = paste(path, "dataFiles.zip",sep = "/"))
+        unzip(zipfile = "dataFiles.zip")
+        activity <- read.csv("activity.csv")
+```  
+  
+  ### Preprocessing the Data  
+  
+```{r}
+    summary(activity)
+    summary(activity$steps)
+    summary(activity$interval)
 
+    library(lubridate)
+    day <- function(x) format(as.Date(x), "%A", na.rm=TRUE)
+    activity$day <- day(activity$date)
+```  
+  
+## What is mean total number of steps taken per day?  
+  
+  ## Histogram of The Total Steps Taken Each Day  
+```{r}
+    library(lattice)
+    histogram(~steps | day, data=activity, type="count")
+```    
+    
+  ### Mean Steps Taken Each Day  
+```{r}
+ library(dplyr)
+    meansteps <- activity %>%
+    group_by(day) %>%
+    summarise(meansteps = mean(steps, na.rm=TRUE)) 
+    print(meansteps)
+```
+    
+  ### Median Steps Taken Each Day
+```{r}
+    library(dplyr)
+    mediansteps <- activity %>%
+    group_by(day) %>%
+    summarise(mediansteps = median(steps, na.rm=TRUE))
+    print(mediansteps)
+```  
 
+## What is the average daily activity pattern?  
+```{r, fig.height=4, fig.width=8}
+      par(mar=c(4,4,4,4), bg="azure", family="HersheySans", lwd=0.25)
+    with(activity, plot(interval, steps, type="l", xlab="Interval", xlim=c(0, 2500), ylab="Average Steps per Day"))
 
-## What is the average daily activity pattern?
+```  
 
+  ### Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?  
+```{r}
+      library(dplyr)  
+      max_step <- activity %>%
+      group_by(day, interval) %>%
+      summarise(max_step = max(steps))
+      
+      par(mar=c(4,4,4,4), bg="azure", family="HersheySans", lwd=0.25)
+      with(max_step, plot(interval, max_step, type="l", xlab="Interval", xlim=c(0, 2500), ylab="Maximum Number of Steps"))
+      
+```  
+  
+The interval between 500-1000 contains the the maximum number of steps, when looking across all days in the dataset.  
+  
+## Imputing Missing Values  
+  ### Total Number of Missing Variables  
+```{r missing}
+    library(dplyr)
+    missing <- activity %>%
+                filter(is.na(steps))
+    table(missing)
+```  
+    
+    
+  ### Imputing Missing Values Using Predictive Mean Matching  
+```{r}
+    library(mice)
+    md.pattern(activity)
+    imputed_data <- mice(activity, method="mean")
+    completedData <- complete(imputed_data,1)
+    summary(completedData)
+    summary(activity)
+```  
+  
+  ### Histogram of Imputed Steps  
+```{r}
+    histogram(~steps | day, data=completedData, type="count")
+```  
+    
+    
+  ### Mean and Median Steps of Imputed Data  
+```{r}
+    meansteps2 <- completedData %>%
+    group_by(day) %>%
+    summarise(meansteps2 = mean(steps, na.rm=TRUE))
 
+    mediansteps2 <- completedData %>%
+    group_by(day) %>%
+    summarise(mediansteps2 = median(steps))
+    
+    print(meansteps2)
+    print(mediansteps2)
+```  
+  
+  ### Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?      
 
-## Imputing missing values
+Overall, the imputed data did not change the mean or median. However, when looking a the mean and median for each day, there are slight differences between the data set with missing values and the imputed data set. These differences were very minimal. When looking at the 3rd quartile, there are more steps taken for the imputed data set. This higlights the differeces:
+  
+```{r}
+  print(meansteps)
+  print(meansteps2)
+  print(mediansteps)
+  print(mediansteps2)
+```  
+  
+  
+## Are there differences in activity patterns between weekdays and weekends?  
+    ### Create "weekday" and "weekend" variables  
+```{r}
+    activity$date <- as.Date(activity$date)
+    wkdays <- c('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday')
+    activity$weekday <- factor((weekdays(activity$date) %in% wkdays), 
+                       levels=c(FALSE, TRUE), labels=c('weekend', 'weekday'))  
+    summary(activity$weekday)
+```  
+  
+    ### Create Panel Plot of Activity Patterns by Weekday and Weekend  
+```{r}
+    library(lattice)
+    xyplot(steps ~ interval | weekday, data = activity, type="l")    
+    
+```  
+  
+    
+There are differences in the activity patterns when looking at the weekday and weekend plots.
 
-
-
-## Are there differences in activity patterns between weekdays and weekends?
+knit2html(PA1_template.html)
