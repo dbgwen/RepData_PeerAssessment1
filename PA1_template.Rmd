@@ -5,7 +5,7 @@ date: "6/15/2019"
 output: html_document
 ---
 
-# Assignment 1 - RMarkdown File  
+# Peer Assignment 1 - RMarkdown File  
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -33,54 +33,55 @@ knitr::opts_chunk$set(echo = TRUE)
     library(lubridate)
     day <- function(x) format(as.Date(x), "%A", na.rm=TRUE)
     activity$day <- day(activity$date)
+    
+    
 ```  
   
 ## What is mean total number of steps taken per day?  
   
-  ## Histogram of The Total Steps Taken Each Day  
+```{r}
+    library(dplyr)
+    totalsteps <- summarise(group_by(activity, date), totalsteps = sum(steps, na.rm=TRUE))
+    print(totalsteps)
+    
+    meansteps <- as.integer(mean(totalsteps$totalsteps), na.rm=TRUE)
+    mediansteps <- as.integer(median(totalsteps$totalsteps))
+```  
+  
+  ### Histogram of The Total Steps Taken Each Day  
 ```{r}
     library(lattice)
-    histogram(~steps | day, data=activity, type="count")
+    histogram(~totalsteps, data=totalsteps, main="Histogram of Total Steps Taken Each Day", col="blue", xlab="Steps")
 ```    
     
   ### Mean Steps Taken Each Day  
 ```{r}
- library(dplyr)
-    meansteps <- activity %>%
-    group_by(day) %>%
-    summarise(meansteps = mean(steps, na.rm=TRUE)) 
     print(meansteps)
 ```
     
   ### Median Steps Taken Each Day
 ```{r}
-    library(dplyr)
-    mediansteps <- activity %>%
-    group_by(day) %>%
-    summarise(mediansteps = median(steps, na.rm=TRUE))
     print(mediansteps)
 ```  
 
 ## What is the average daily activity pattern?  
 ```{r, fig.height=4, fig.width=8}
+
+library(dplyr)
+    intervals <- summarise(group_by(activity, interval), meansteps = mean(steps, na.rm=TRUE))
       par(mar=c(4,4,4,4), bg="azure", family="HersheySans", lwd=0.25)
-    with(activity, plot(interval, steps, type="l", xlab="Interval", xlim=c(0, 2500), ylab="Average Steps per Day"))
+    with(intervals, plot(meansteps, type="l", xlab="Interval", ylab="Average Steps per Day", main="Average Daily Pattern"))
 
 ```  
 
   ### Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?  
 ```{r}
       library(dplyr)  
-      max_step <- activity %>%
-      group_by(day, interval) %>%
-      summarise(max_step = max(steps))
-      
-      par(mar=c(4,4,4,4), bg="azure", family="HersheySans", lwd=0.25)
-      with(max_step, plot(interval, max_step, type="l", xlab="Interval", xlim=c(0, 2500), ylab="Maximum Number of Steps"))
+      top_n(intervals, 1, meansteps)
       
 ```  
   
-The interval between 500-1000 contains the the maximum number of steps, when looking across all days in the dataset.  
+The 835th interval has the maximum number of steps.   
   
 ## Imputing Missing Values  
   ### Total Number of Missing Variables  
@@ -90,50 +91,50 @@ The interval between 500-1000 contains the the maximum number of steps, when loo
                 filter(is.na(steps))
     table(missing)
 ```  
-    
-    
-  ### Imputing Missing Values Using Predictive Mean Matching  
+      
+      
+  ### Looking at Missingness Pattern  
 ```{r}
     library(mice)
     md.pattern(activity)
+    
+```  
+      
+  ### Imputing Missing Values Using Predictive Mean Matching
+```{r}
     imputed_data <- mice(activity, method="mean")
     completedData <- complete(imputed_data,1)
     summary(completedData)
     summary(activity)
 ```  
   
-  ### Histogram of Imputed Steps  
+  ### Histogram of Imputed Data  
 ```{r}
-    histogram(~steps | day, data=completedData, type="count")
+    library(dplyr)
+    intervals <- summarise(group_by(completedData, interval), meansteps = mean(steps, na.rm=TRUE))
+       library(lattice)
+    histogram(~totalsteps, data=totalsteps, main="Histogram of Total Steps Taken Each Day - Imputed Data", col="green", xlab="Steps")
+    
 ```  
     
     
   ### Mean and Median Steps of Imputed Data  
 ```{r}
-    meansteps2 <- completedData %>%
-    group_by(day) %>%
-    summarise(meansteps2 = mean(steps, na.rm=TRUE))
-
-    mediansteps2 <- completedData %>%
-    group_by(day) %>%
-    summarise(mediansteps2 = median(steps))
+     library(dplyr)
+    totalsteps2 <- summarise(group_by(completedData, date), totalsteps = sum(steps, na.rm=TRUE))
+    print(totalsteps)
     
+    meansteps2 <- as.integer(mean(totalsteps2$totalsteps), na.rm=TRUE)
+    mediansteps2 <- as.integer(median(totalsteps2$totalsteps))
+
     print(meansteps2)
     print(mediansteps2)
 ```  
   
   ### Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?      
 
-Overall, the imputed data did not change the mean or median. However, when looking a the mean and median for each day, there are slight differences between the data set with missing values and the imputed data set. These differences were very minimal. When looking at the 3rd quartile, there are more steps taken for the imputed data set. This higlights the differeces:
-  
-```{r}
-  print(meansteps)
-  print(meansteps2)
-  print(mediansteps)
-  print(mediansteps2)
-```  
-  
-  
+Overall, the imputed data made the mean and median equal. in the original data set the mean was lower than the median.  
+
 ## Are there differences in activity patterns between weekdays and weekends?  
     ### Create "weekday" and "weekend" variables  
 ```{r}
@@ -146,12 +147,14 @@ Overall, the imputed data did not change the mean or median. However, when looki
   
     ### Create Panel Plot of Activity Patterns by Weekday and Weekend  
 ```{r}
+
+  library(dplyr)
+    intervals2 <- summarise(group_by(activity, interval, weekday), meansteps = mean(steps, na.rm=TRUE))
     library(lattice)
-    xyplot(steps ~ interval | weekday, data = activity, type="l")    
+    xyplot(meansteps ~ interval | weekday, data = intervals2, type="l", xlab="Interval", ylab="Steps", main="Activity Patterns by Weekday and Weekend")    
     
 ```  
   
-    
 There are differences in the activity patterns when looking at the weekday and weekend plots.
 
 knit2html(PA1_template.html)
