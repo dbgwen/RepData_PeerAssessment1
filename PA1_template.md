@@ -2,9 +2,7 @@
 title: 'Reproducible Research: Peer Assessment 1'
 author: "Deborah Passey"
 date: "6/15/2019"
-output:
-  pdf_document: default
-  html_document: null
+output: html_document
 ---
 
 # Peer Assignment 1 - RMarkdown File  
